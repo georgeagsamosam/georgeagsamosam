@@ -1,0 +1,8 @@
+{
+  "appId": "georgeagsamosam.github.io",
+  "appName": "georgeagsamosam",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
