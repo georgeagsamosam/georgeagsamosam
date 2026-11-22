@@ -4,12 +4,18 @@ import NowCard from '@/components/NowCard.vue'
 import MonthCalendar from '@/components/MonthCalendar.vue'
 import DayTimeline from '@/components/DayTimeline.vue'
 import UpcomingList from '@/components/UpcomingList.vue'
+import OnDutyBoard from '@/components/OnDutyBoard.vue'
+import ShiftStrip from '@/components/ShiftStrip.vue'
 import {
-  CREW, dateKey, dayTimeline, fullDate, monthGrid, monthName, nowCardModel,
-  onShiftNow, sameDay, startOfDay, upcomingDays,
+  CREW, addDays, clock, dateKey, dayTimeline, dutyBoard, fullDate, hoursFrom, monthGrid,
+  monthName, monthShort, nowCardModel, onShiftNow, sameDay, startOfDay, stripModel,
+  upcomingDays, weekdayShort,
 } from '@/schedule.js'
 
-const version = '1.3'
+const version = '1.4'
+// the strip shows a week back and a full 56-day rotation ahead
+const STRIP_BACK = 7
+const STRIP_DAYS = STRIP_BACK + 56
 const STORAGE_KEY = 'sd.crew'
 
 const loadCrew = () => {
@@ -45,6 +51,17 @@ const calTitle = computed(() => `${monthName(viewMonth.value)} ${viewMonth.value
 const weeks = computed(() => monthGrid(viewMonth.value, crewIdx.value, today.value))
 const timelineRows = computed(() => dayTimeline(selected.value, crewIdx.value))
 const upcoming = computed(() => upcomingDays(crewIdx.value, now.value, 7))
+const board = computed(() => dutyBoard(now.value))
+const clockText = computed(() =>
+  `${clock(now.value)} · ${weekdayShort(now.value)} ${monthShort(now.value)} ${now.value.getDate()}`,
+)
+// keyed by date string so the strip is only rebuilt when the day or person changes, not every tick
+const stripStartKey = computed(() => dateKey(addDays(today.value, -STRIP_BACK)))
+const strip = computed(() => {
+  const [y, m, d] = stripStartKey.value.split('-').map(Number)
+  return stripModel(new Date(y, m - 1, d), STRIP_DAYS, crewIdx.value)
+})
+const stripNowH = computed(() => hoursFrom(strip.value.start, now.value))
 const selectedIsToday = computed(() => sameDay(selected.value, now.value))
 const nowPct = computed(() =>
   selectedIsToday.value ? ((now.value.getHours() * 60 + now.value.getMinutes()) / 1440) * 100 : null,
@@ -83,6 +100,16 @@ const showVersion = () => {
       </div>
       <button type="button" class="sd-btn sd-btn--primary" @click="goToday">Today</button>
     </header>
+
+    <OnDutyBoard :board="board" :clock-text="clockText" :selected-id="crewIdx" @pick="crewIdx = $event" />
+
+    <ShiftStrip
+      :model="strip"
+      :now-h="stripNowH"
+      :selected-key="selectedKey"
+      @select="selectDate"
+      @pick="crewIdx = $event"
+    />
 
     <nav class="sd-crew" role="tablist" aria-label="Choose a person">
       <button

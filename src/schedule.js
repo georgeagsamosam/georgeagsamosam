@@ -266,3 +266,121 @@ export function nowCardModel(idx, now) {
 
 /** Who is on shift right now (by crew id), for the dots on the crew picker. */
 export const onShiftNow = (now) => CREW.map((p) => getStatus(p.id, now).state === 'on')
+
+const compactRange = (s) => s.range.replace(/AM|PM/g, (x) => x[0])
+
+/**
+ * "Who's on now" board for the whole crew:
+ *  - on:     everyone working at `now`, with progress through their shift
+ *  - upNext: whoever starts next (the next handover)
+ *  - rest:   everyone else, with their next shift
+ */
+export function dutyBoard(now) {
+  const today = startOfDay(now)
+  const all = CREW.map((p) => ({ person: p, ...getStatus(p.id, now) }))
+  const when = (d) => `${cap(relativeDay(startOfDay(d), today))} ${clock(d)}`
+  const who = (p) => ({ id: p.id, name: p.short, fullName: p.name, initials: p.initials })
+
+  const on = all
+    .filter((s) => s.current)
+    .map(({ person, current: c }) => ({
+      ...who(person),
+      key: c.shift.key,
+      title: c.shift.title,
+      range: c.shift.range,
+      startedAt: when(c.start),
+      endsAt: when(c.end),
+      endsIn: duration(c.end - now),
+      progress: Math.min(100, Math.max(0, ((now - c.start) / (c.end - c.start)) * 100))
+    }))
+
+  const off = all.filter((s) => !s.current && s.next)
+  const firstStart = Math.min(...off.map((s) => +s.next.start))
+  const nextOf = ({ person, next: n }) => ({
+    ...who(person),
+    key: n.shift.key,
+    short: n.shift.short,
+    title: n.shift.title,
+    range: n.shift.range,
+    startsAt: when(n.start),
+    startsIn: duration(n.start - now)
+  })
+  const upNext = off.filter((s) => +s.next.start === firstStart).map(nextOf)
+  const rest = off.filter((s) => +s.next.start !== firstStart).map(nextOf)
+  // nobody on and nobody starting soon would be odd, but keep the crew visible
+  const idle = all.filter((s) => !s.current && !s.next).map(({ person }) => who(person))
+
+  return { on, upNext, rest, idle, gap: on.length === 0 }
+}
+
+/**
+ * Long horizontal timeline: `days` days starting at `from`, one lane per crew
+ * member. Bars are positioned in hours from the start of `from`, so a night
+ * shift is one continuous bar across midnight. Also returns the hours where
+ * nobody is on shift.
+ */
+export function stripModel(from, days, selectedIdx) {
+  const start = startOfDay(from)
+  const total = days * 24
+
+  const dayCols = Array.from({ length: days }, (_, i) => {
+    const date = addDays(start, i)
+    return {
+      i,
+      date,
+      key: dateKey(date),
+      weekday: weekdayShort(date),
+      day: date.getDate(),
+      month: i === 0 || date.getDate() === 1 ? `${monthShort(date)} ${date.getFullYear()}` : '',
+      weekend: date.getDay() === 0 || date.getDay() === 6
+    }
+  })
+
+  const covered = new Uint8Array(total)
+  const rows = CREW.map((person) => {
+    const bars = []
+    // start one day early so last night's shift carries into the first day
+    for (let i = -1; i < days; i++) {
+      const date = addDays(start, i)
+      const code = getSched(date, person.id)
+      if (code === '0') continue
+      const s = SHIFTS[code]
+      const from = Math.max(0, i * 24 + s.start)
+      const to = Math.min(total, i * 24 + s.end)
+      if (to <= from) continue
+      for (let h = from; h < to; h++) covered[h] = 1
+      bars.push({
+        key: s.key,
+        short: s.short,
+        compact: compactRange(s),
+        from,
+        to,
+        date,
+        title: `${person.short}: ${s.title} ${s.range}, ${fullDate(date)}`,
+        clippedLeft: i * 24 + s.start < 0,
+        clippedRight: i * 24 + s.end > total
+      })
+    }
+    return {
+      id: person.id,
+      name: person.short,
+      initials: person.initials,
+      isMe: person.id === selectedIdx,
+      bars
+    }
+  })
+
+  const gaps = []
+  for (let h = 0; h < total; h++) {
+    if (covered[h]) continue
+    const last = gaps[gaps.length - 1]
+    if (last && last.to === h) last.to = h + 1
+    else gaps.push({ from: h, to: h + 1 })
+  }
+
+  return { start, days, hours: total, dayCols, rows, gaps }
+}
+
+/** Position of `date` in hours from the start of `start` (DST-safe). */
+export const hoursFrom = (start, date) =>
+  diffDays(start, date) * 24 + date.getHours() + date.getMinutes() / 60
