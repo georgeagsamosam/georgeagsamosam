@@ -1,234 +1,124 @@
-<template>
-  <div class="grid">
-    <div class="text-center">
-      <div class="flex content-center">
-        <select v-model="idx" class="w-full my-1 font-sans rounded">
-          <option value="0">Agsamosam, George</option>
-          <option value="1">De Leon, Dennis</option>
-          <option value="2">Sibayan, Rodel</option>
-          <option value="3">Villaflores, Rodelio</option>
-        </select>
-        <button @click.stop="goToDateToday"
-          class="px-1 ml-1 text-sm text-white uppercase rounded-md shadow bg-sky-500">Today</button>
-      </div>
-    </div>
-    <div class="w-full mx-auto text-center">
-      <VCalendar ref="calendar" borderless transparent isDark class="w-full" @did-move="didMove" @dayfocusin="dayclick"
-        :attributes="attributes" />
-    </div>
-    <div v-if="scheds" class="p-3 mt-2 font-sans text-center text-white bg-gray-600 rounded-lg">
-      <span class="font-bold">{{ selectedDate }}</span>
-      <div class="mb-3" v-for="sched in scheds" :key="sched.name">
-
-        <div :class="{
-          'bg-red-500': sched.sched === '0',
-          'bg-sky-500': sched.sched === '4',
-          'bg-yellow-500': sched.sched === '13',
-          'bg-purple-500': sched.sched === '39',
-          'bg-orange-500': sched.sched === '13*'
-        }" class="px-2 py-1 my-1 bg-gray-200 rounded-full">
-
-          <p class="leading-none">
-            <span class="text-xs">{{ convertCodeToLabel(sched.sched) }}</span><br />
-            <span class="text-sm font-bold">{{ sched.name }}</span>
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="absolute bottom-0 left-0 w-full mx-auto text-xs text-center text-white" @click.prevent="showVersion">
-    v1.2</div>
-</template>
-
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { getSched, codeToLabel } from '@/utils.js'
-const version = 1.1
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import NowCard from '@/components/NowCard.vue'
+import MonthCalendar from '@/components/MonthCalendar.vue'
+import DayTimeline from '@/components/DayTimeline.vue'
+import UpcomingList from '@/components/UpcomingList.vue'
+import {
+  CREW, dateKey, dayTimeline, fullDate, monthGrid, monthName, nowCardModel,
+  onShiftNow, sameDay, startOfDay, upcomingDays,
+} from '@/schedule.js'
 
-const idx = ref(0)
-const theDate = ref(new Date())
-const scheds = ref(null)
-const selectedDate = ref(null)
-const calendar = ref(null)
+const version = '1.3'
+const STORAGE_KEY = 'sd.crew'
 
-const red = '#f87171'
-const yellow = '#fde047'
-const blue = '#7dd3fc'
-const violet = '#c4b5fd'
-const orange = '#fb923c'
-
-const goToDateToday = () => {
-  calendar.value.focusDate(new Date())
-}
-
-const convertCodeToLabel = (code) => {
-  return codeToLabel[code]
-}
-const getMonthName = (m) => {
-  return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m]
-}
-const getDateDay = (d) => {
-  return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d]
-}
-const dayclick = (val) => {
-  scheds.value = []
-  selectedDate.value = val.ariaLabel
-  const temp = [{
-    name: 'Agsamosam, George',
-    sched: getSched(val.date, 0)
-  },
-  {
-    name: 'De Leon, Dennis',
-    sched: getSched(val.date, 1)
-  }, {
-    name: 'Sibayan, Rodel',
-    sched: getSched(val.date, 2)
-  }, {
-    name: 'Villaflores, Rodelio',
-    sched: getSched(val.date, 3)
-  }]
-  for (let i = 0; i < temp.length; i++) {
-    if (temp[i].sched === '0') scheds.value.push(temp[i])
-  }
-  for (let i = 0; i < temp.length; i++) {
-    if (temp[i].sched === '4') scheds.value.push(temp[i])
-  }
-  for (let i = 0; i < temp.length; i++) {
-    if (temp[i].sched === '13') scheds.value.push(temp[i])
-  }
-  for (let i = 0; i < temp.length; i++) {
-    if (temp[i].sched === '39') scheds.value.push(temp[i])
-  }
-  for (let i = 0; i < temp.length; i++) {
-    if (temp[i].sched === '13*') scheds.value.push(temp[i])
+const loadCrew = () => {
+  try {
+    const saved = Number(localStorage.getItem(STORAGE_KEY))
+    return Number.isInteger(saved) && saved >= 0 && saved < CREW.length ? saved : 0
+  } catch (e) {
+    return 0
   }
 }
 
-const didMove = (val) => {
-  theDate.value = new Date(val[0].year, val[0].month - 1)
-}
-const attributes = computed(() => {
-  const month = theDate.value.getMonth()
-  const year = theDate.value.getFullYear()
-  const numDays = new Date(year, month + 1, 0).getDate()
-  const s_0 = []
-  const s_4 = []
-  const s_13 = []
-  const s_39 = []
-  const s_13star = []
-  for (let i = 1; i <= numDays; i++) {
-    const bufferDate = new Date(year, month, i)
-    const sched = getSched(bufferDate, idx.value)
-    if (sched === '0') {
-      s_0.push(bufferDate)
-    } else if (sched === '4') {
-      s_4.push(bufferDate)
-    } else if (sched === '13') {
-      s_13.push(bufferDate)
-    } else if (sched === '13*') {
-      s_13star.push(bufferDate)
-    } else if (sched === '39') {
-      s_39.push(bufferDate)
-    }
-  }
-  // console.log('s_0', s_0.map(x => x.getDate()))
-  // console.log('s_4', s_4.map(x => x.getDate()))
-  // console.log('s_13', s_13.map(x => x.getDate()))
-  // console.log('s_13star', s_13star.map(x => x.getDate()))
-  // console.log('s_39', s_39.map(x => x.getDate()))
-  // console.log(year, month)
-  // console.log({ start: new Date(year, month, 1), end: new Date(year, month, numDays) })
+const crewIdx = ref(loadCrew())
+const now = ref(new Date())
+const selected = ref(startOfDay(new Date()))
+const viewMonth = ref(new Date(selected.value.getFullYear(), selected.value.getMonth(), 1))
 
-  return [
-    {
-      dates: { start: new Date(year, month, 1), end: new Date(year, month, numDays) },
-      content: {
-        style: {
-          fontFamily: 'Fira Code',
-          fontWeight: '900',
-        }
-      }
-    },
-    {
-      dot: true,
-      dates: new Date(),
-    },
-    {
-      content: {
-        style: {
-          color: red,
-        },
-      },
-      dates: s_0
-    },
-    {
-      content: {
-        style: {
-          color: blue,
-        }
-      },
-      dates: s_4
-    },
-    {
-      content: {
-        style: {
-          color: yellow,
-        }
-      },
-      dates: s_13
-    },
-    {
-      content: {
-        style: {
-          color: orange,
-        }
-      },
-      dates: s_13star
-    },
-    {
-      content: {
-        style: {
-          color: violet,
-        },
-      },
-      dates: s_39
-    },
-  ]
+watch(crewIdx, (v) => {
+  try { localStorage.setItem(STORAGE_KEY, String(v)) } catch (e) { /* private mode etc. */ }
 })
 
-onMounted(() => {
-  const theDate = new Date()
-  didMove([{
-    year: theDate.getFullYear(),
-    month: theDate.getMonth() + 1,
-    monthComps: {
-      numDays: new Date(theDate.getFullYear(), theDate.getMonth() + 1, 0).getDate()
-    }
-  }])
-  dayclick({
-    ariaLabel: `${getDateDay(theDate.getDay())}, ${getMonthName(theDate.getMonth())} ${theDate.getDate()}, ${theDate.getFullYear()}`,
-    date: theDate
-  })
-})
-console.log('import.meta.env.MODE', import.meta.env.MODE)
-let count = 0
-function debounce (func, delay) {
-  let timeoutId;
-  return function () {
-    const context = this;
-    const args = arguments;
-    clearTimeout(timeoutId);
-    count++
-    timeoutId = setTimeout(() => {
-      func.apply(context, args);
+// keep "now" fresh (countdowns, who's on duty, midnight rollover)
+let timer
+onMounted(() => { timer = setInterval(() => { now.value = new Date() }, 30 * 1000) })
+onBeforeUnmount(() => clearInterval(timer))
 
-    }, delay);
-  };
+const today = computed(() => startOfDay(now.value))
+const selectedKey = computed(() => dateKey(selected.value))
+const person = computed(() => CREW[crewIdx.value])
+
+const nowModel = computed(() => nowCardModel(crewIdx.value, now.value))
+const onNow = computed(() => onShiftNow(now.value))
+const calTitle = computed(() => `${monthName(viewMonth.value)} ${viewMonth.value.getFullYear()}`)
+const weeks = computed(() => monthGrid(viewMonth.value, crewIdx.value, today.value))
+const timelineRows = computed(() => dayTimeline(selected.value, crewIdx.value))
+const upcoming = computed(() => upcomingDays(crewIdx.value, now.value, 7))
+const selectedIsToday = computed(() => sameDay(selected.value, now.value))
+const nowPct = computed(() =>
+  selectedIsToday.value ? ((now.value.getHours() * 60 + now.value.getMinutes()) / 1440) * 100 : null,
+)
+
+const selectDate = (date) => {
+  selected.value = startOfDay(date)
+  viewMonth.value = new Date(date.getFullYear(), date.getMonth(), 1)
 }
-const showVersion = debounce(() => {
-  if (count >= 5) alert(`${import.meta.env.MODE}: ${version}`)
-  else count = 0
-}, 500)
+const goToday = () => {
+  now.value = new Date()
+  selectDate(now.value)
+}
+const shiftMonth = (n) => {
+  viewMonth.value = new Date(viewMonth.value.getFullYear(), viewMonth.value.getMonth() + n, 1)
+}
 
-
+// tap the version 5 times quickly to see the build mode (same hidden check as before)
+let taps = []
+const showVersion = () => {
+  const t = Date.now()
+  taps = [...taps.filter((x) => t - x < 2000), t]
+  if (taps.length >= 5) {
+    taps = []
+    alert(`${import.meta.env.MODE}: ${version}`)
+  }
+}
 </script>
+
+<template>
+  <div class="sd-app">
+    <header class="sd-top">
+      <div>
+        <h1>Shift Schedule</h1>
+        <p>{{ person.name }}</p>
+      </div>
+      <button type="button" class="sd-btn sd-btn--primary" @click="goToday">Today</button>
+    </header>
+
+    <nav class="sd-crew" role="tablist" aria-label="Choose a person">
+      <button
+        v-for="p in CREW"
+        :key="p.id"
+        type="button"
+        role="tab"
+        class="sd-crew__btn"
+        :aria-selected="p.id === crewIdx"
+        @click="crewIdx = p.id"
+      >
+        <span class="sd-avatar">{{ p.initials }}</span>
+        {{ p.short }}
+        <span v-if="onNow[p.id]" class="sd-crew__dot" title="On shift now"></span>
+      </button>
+    </nav>
+    <p class="sd-crew__note"><i></i> Green dot = on shift right now</p>
+
+    <div class="sd-layout">
+      <div class="sd-col">
+        <NowCard :model="nowModel" />
+        <MonthCalendar
+          :title="calTitle"
+          :weeks="weeks"
+          :selected-key="selectedKey"
+          @select="selectDate"
+          @prev="shiftMonth(-1)"
+          @next="shiftMonth(1)"
+        />
+      </div>
+      <div class="sd-col">
+        <DayTimeline :title="fullDate(selected)" :is-today="selectedIsToday" :now-pct="nowPct" :rows="timelineRows" />
+        <UpcomingList :days="upcoming" :selected-key="selectedKey" @select="selectDate" />
+      </div>
+    </div>
+
+    <p class="sd-foot" @click.prevent="showVersion">v{{ version }}</p>
+  </div>
+</template>

@@ -8,7 +8,7 @@ const NT = ['39', '39', '0', '39', '39', '39', '0', '39', '39', '39', '39', '0',
 const RL = ['13', '13', '39', '0', '0', '4', '13*', '13', '0', '4', '4', '39', '13*', '0']
 
 /**
- * 
+ *
  * @returns [[56], [56], [56], [56]]
  */
 function getCycles () {
@@ -28,16 +28,22 @@ function getCycles () {
   }
   return cycles
 }
-const starting_date = new Date(2023, 6, 10).valueOf()
-const totalDays_Jul_10_2023 = Math.floor(starting_date / millisecondsPerDay)
+const CYCLES = getCycles()
+
+// Whole calendar days since the Unix epoch, counted from the date's *local*
+// year/month/day. (The old code floored the raw timestamp, which is a UTC day
+// and drifts by one day for "now" in zones like Manila after 8AM.)
+const dayNumber = (date) =>
+  Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / millisecondsPerDay)
+
+const totalDays_Jul_10_2023 = dayNumber(new Date(2023, 6, 10))
 
 export const getSched = (date, idx) => {
-  const totalDaysFromDate = Math.floor(date.valueOf() / millisecondsPerDay)
-  const daysCount = totalDaysFromDate - totalDays_Jul_10_2023
+  const daysCount = dayNumber(date) - totalDays_Jul_10_2023
   const mod = daysCount % 56
   const offset = mod < 0 ? mod + 56 : mod
-  
-  return getCycles()[idx][offset]
+
+  return CYCLES[idx][offset]
 }
 
 export const codeToLabel = {
@@ -47,7 +53,3 @@ export const codeToLabel = {
   '0': 'Day Off',
   '13*': 'Schedule OT',
 }
-// console.log(JSON.stringify(getCycles()[0]))
-// console.log(JSON.stringify(getCycles()[1]))
-// console.log(JSON.stringify(getCycles()[2]))
-// console.log(JSON.stringify(getCycles()[3]))
