@@ -6,6 +6,7 @@ import DayTimeline from '@/components/DayTimeline.vue'
 import UpcomingList from '@/components/UpcomingList.vue'
 import OnDutyBoard from '@/components/OnDutyBoard.vue'
 import ShiftStrip from '@/components/ShiftStrip.vue'
+import YearExport from '@/components/YearExport.vue'
 import {
   CREW, addDays, clock, dateKey, dayTimeline, dutyBoard, fullDate, hoursFrom, monthGrid,
   monthName, monthShort, nowCardModel, onShiftNow, sameDay, startOfDay, stripModel,
@@ -145,6 +146,8 @@ const showVersion = () => {
         <UpcomingList :days="upcoming" :selected-key="selectedKey" @select="selectDate" />
       </div>
     </div>
+
+    <YearExport :initial-year="today.getFullYear()" />
 
     <p class="sd-foot" @click.prevent="showVersion">v{{ version }}</p>
   </div>

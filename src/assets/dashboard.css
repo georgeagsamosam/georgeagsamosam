@@ -360,3 +360,12 @@
   .sd-segctl { flex: 1; }
   .sd-segctl button { flex: 1; }
 }
+
+/* ---------- year spreadsheet export ---------- */
+.sd-export { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 18px; margin-top: 14px; }
+.sd-export__text { flex: 1 1 320px; min-width: 0; }
+.sd-export__ctl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sd-export__year { display: flex; align-items: center; gap: 8px; }
+.sd-export__year b { min-width: 48px; text-align: center; font-size: 16px; }
+.sd-export__status { flex-basis: 100%; margin-top: 0; }
+@media (min-width: 900px) { .sd-export { margin-top: 18px; } }

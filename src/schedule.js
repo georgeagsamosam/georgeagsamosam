@@ -30,7 +30,7 @@ export const LEGEND = ['4', '13', '39', '13*', '0'].map((code) => ({ code, ...SH
 const MS_DAY = 24 * 60 * 60 * 1000
 const pad = (n) => String(n).padStart(2, '0')
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 export const weekdayShort = (d) => WEEKDAYS[d.getDay()].slice(0, 3)
 export const monthName = (d) => MONTHS[d.getMonth()]
