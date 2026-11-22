@@ -1,0 +1,1 @@
+import{r,b as t}from"./index-85882850.js";const a=r("Share",{web:()=>t(()=>import("./web-f8eb2f27.js"),["./web-f8eb2f27.js","./index-85882850.js","./index-32e487a5.css"],import.meta.url).then(e=>new e.ShareWeb)});export{a as Share};
