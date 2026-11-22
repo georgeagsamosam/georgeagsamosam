@@ -9,12 +9,20 @@ const props = defineProps({
 const year = ref(props.initialYear)
 const status = ref('')
 
-const download = () => {
+const busy = ref(false)
+
+const download = async () => {
+  if (busy.value) return
+  busy.value = true
+  status.value = ''
   try {
-    downloadYearWorkbook(year.value)
-    status.value = `Saved ${yearFileName(year.value)}`
+    const result = await downloadYearWorkbook(year.value)
+    const name = yearFileName(year.value)
+    status.value = result === 'cancelled' ? '' : result === 'shared' ? `${name} is ready` : `Downloaded ${name}`
   } catch (e) {
     status.value = 'Could not create the file on this device.'
+  } finally {
+    busy.value = false
   }
 }
 </script>
@@ -35,7 +43,9 @@ const download = () => {
         <b class="sd-mono" aria-live="polite">{{ year }}</b>
         <button class="sd-icon-btn" type="button" aria-label="Next year" @click="year++">›</button>
       </div>
-      <button type="button" class="sd-btn sd-btn--primary" @click="download">Download .xlsx</button>
+      <button type="button" class="sd-btn sd-btn--primary" :disabled="busy" @click="download">
+        {{ busy ? 'Preparing…' : 'Download .xlsx' }}
+      </button>
     </div>
     <p v-if="status" class="sd-sub sd-export__status" role="status">{{ status }}</p>
   </section>

@@ -10,6 +10,7 @@
 // and each week starts with a heavier divider line.
 
 import { CREW, LEGEND, MONTHS, WEEKDAY_HEADERS, addDays, dayInfo } from './schedule.js'
+import { Capacitor } from '@capacitor/core'
 import { Workbook, XLSX_MIME, colName, dateSerial } from './xlsx.js'
 
 // Print-friendly versions of the dashboard's shift colours (light fill, dark text).
@@ -273,15 +274,44 @@ export function buildYearWorkbook(year) {
 
 export const yearFileName = (year) => `shift-schedule-${year}.xlsx`
 
-/** Build the workbook and hand it to the browser as a download. */
-export function downloadYearWorkbook(year) {
-  const blob = new Blob([buildYearWorkbook(year)], { type: XLSX_MIME })
-  const url = URL.createObjectURL(blob)
+const toBase64 = (bytes) => {
+  let s = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(s)
+}
+
+/**
+ * Build the workbook and hand it over. In a browser it downloads; in the
+ * Android/iOS app (where web downloads do nothing) it is written to the app
+ * cache and opened in the share sheet (save to Files/Drive, open in Sheets...).
+ * Resolves to 'downloaded', 'shared' or 'cancelled'.
+ */
+export async function downloadYearWorkbook(year) {
+  const bytes = buildYearWorkbook(year)
+  const name = yearFileName(year)
+
+  if (Capacitor.isNativePlatform()) {
+    const [{ Filesystem, Directory }, { Share }] = await Promise.all([
+      import('@capacitor/filesystem'),
+      import('@capacitor/share'),
+    ])
+    const { uri } = await Filesystem.writeFile({ path: name, data: toBase64(bytes), directory: Directory.Cache })
+    try {
+      await Share.share({ title: name, dialogTitle: `Save or open ${name}`, files: [uri] })
+      return 'shared'
+    } catch (e) {
+      if (/cancel/i.test(String(e?.message || e))) return 'cancelled'
+      throw e
+    }
+  }
+
+  const url = URL.createObjectURL(new Blob([bytes], { type: XLSX_MIME }))
   const a = document.createElement('a')
   a.href = url
-  a.download = yearFileName(year)
+  a.download = name
   document.body.appendChild(a)
   a.click()
   a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 10000)
+  return 'downloaded'
 }
